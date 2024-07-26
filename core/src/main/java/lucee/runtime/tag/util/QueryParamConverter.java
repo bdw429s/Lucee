@@ -117,6 +117,7 @@ public class QueryParamConverter {
 		sct.setEL(KeyConstants._value, item.getValue());
 		sct.setEL(KeyConstants._type, SQLCaster.toStringType(item.getType(), null));
 		sct.setEL(KeyConstants._scale, item.getScale());
+		sct.setEL(KeyConstants._null, item.isNulls());
 		return sct;
 	}
 
@@ -144,11 +145,12 @@ public class QueryParamConverter {
 
 		for (int i = 0; i < sqlLen; i++) {
 			c = sql.charAt(i);
-			if (!inQuotes && sqlLen + 1 > i) {
+			if (!inQuotes && i < (sqlLen - 1)) {
 				// read multi line
 				if (c == '/' && sql.charAt(i + 1) == '*') {
 					int end = sql.indexOf("*/", i + 2);
 					if (end != -1) {
+						sb.append(sql.substring(i, end + 2));
 						i = end + 2;
 						if (i == sqlLen) break;
 						c = sql.charAt(i);
@@ -156,14 +158,17 @@ public class QueryParamConverter {
 				}
 
 				// read single line
-				if (c == '-' && sql.charAt(i + 1) == '-') {
+				if (c == '-' && i < (sqlLen - 1) && sql.charAt(i + 1) == '-') {
 					int end = sql.indexOf('\n', i + 1);
-					if (end != -1) {
-						i = end + 1;
-						if (i == sqlLen) break;
-						c = sql.charAt(i);
+					if (end == -1) end = sql.indexOf('\r', i + 1);
+					if (end == -1) {
+						// set end to last char of string
+						end = sqlLen - 1;
 					}
-					else break;
+					sb.append(sql.substring(i, end + 1));
+					i = end;
+					continue;
+					// else break;
 				}
 			}
 			if (c == '"' || c == '\'') {

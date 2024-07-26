@@ -43,7 +43,7 @@ public final class SQLImpl implements SQL, Serializable {
 	 * Constructor with SQL String and SQL Items
 	 * 
 	 * @param strSQL SQL String
-	 * @param items SQL Items
+	 * @param items  SQL Items
 	 */
 	public SQLImpl(String strSQL, SQLItem[] items) {
 		this.strSQL = strSQL;
@@ -102,11 +102,12 @@ public final class SQLImpl implements SQL, Serializable {
 		int index = 0;
 		for (int i = 0; i < sqlLen; i++) {
 			c = strSQL.charAt(i);
-			if (!inQuotes && sqlLen + 1 > i) {
+			if (!inQuotes && i < (sqlLen - 1)) {
 				// read multi line
 				if (c == '/' && strSQL.charAt(i + 1) == '*') {
 					int end = strSQL.indexOf("*/", i + 2);
 					if (end != -1) {
+						sb.append(strSQL.substring(i, end + 2));
 						i = end + 2;
 						if (i == sqlLen) break;
 						c = strSQL.charAt(i);
@@ -114,14 +115,17 @@ public final class SQLImpl implements SQL, Serializable {
 				}
 
 				// read single line
-				if (c == '-' && strSQL.charAt(i + 1) == '-') {
+				if (c == '-' && i < (sqlLen - 1) && strSQL.charAt(i + 1) == '-') {
 					int end = strSQL.indexOf('\n', i + 1);
-					if (end != -1) {
-						i = end + 1;
-						if (i == sqlLen) break;
-						c = strSQL.charAt(i);
+					if (end == -1) end = strSQL.indexOf('\r', i + 1);
+					if (end == -1) {
+						// set end to last char of string
+						end = sqlLen - 1;
 					}
-					else break;
+					sb.append(strSQL.substring(i, end + 1));
+					i = end;
+					continue;
+
 				}
 			}
 			if (c == '"' || c == '\'') {
@@ -137,7 +141,7 @@ public final class SQLImpl implements SQL, Serializable {
 				sb.append(c);
 			}
 			else if (!inQuotes && c == '?') {
-				if ((index + 1) > items.length) throw new RuntimeException("there are more question marks in the SQL than params defined, in the SQL String: [" + strSQL +"]");
+				if ((index + 1) > items.length) throw new RuntimeException("there are more question marks in the SQL than params defined, in the SQL String: [" + strSQL + "]");
 				if (items[index].isNulls()) sb.append("null");
 				else sb.append(SQLCaster.toString(items[index]));
 				index++;
